@@ -5,12 +5,14 @@ import (
   "net/http"
 )
 
+var url []byte
+
 //------------------------------------------------------------------------------
 func rootPage( w http.ResponseWriter, r *http.Request ) {
+  var err error
 
-  url, err := io.ReadAll(r.Body)  // получаем url из тела запроса
+  url, err = io.ReadAll(r.Body)  // получаем url из тела запроса
   if err != nil { http.Error( w, err.Error(), http.StatusInternalServerError ); return }
-  _ = url
 
   w.Header().Set("content-type","text/plain")
   w.WriteHeader(http.StatusCreated)
@@ -26,7 +28,7 @@ func idPage( w http.ResponseWriter, r *http.Request ) {
 
   if id != "EwHXdJfB" { BadRequest(w,r); return }
 
-  http.Redirect( w, r, "https://practicum.yandex.ru/", http.StatusTemporaryRedirect )
+  http.Redirect( w, r, string(url), http.StatusTemporaryRedirect )
 
 } // func mainPage
 
