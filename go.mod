@@ -1,3 +1,3 @@
 module github.com/ssl031/url-shortener
 
-go 1.23.4
+go 1.22.4
