@@ -7,11 +7,12 @@ import (
   "math/rand"
 )
 
-var mapIdUrl map[string]string  // карта id - url
+var mapURL map[string]string  // карта mapURL[id] -> url
+// желательно сделать защиту этой map
 
 //------------------------------------------------------------------------------
 // генерирует случайный id (строка 8 символов)
-func generate_random_id() string {
+func generateRandomID() string {
   var chars = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
   b := make([]byte, 8)
@@ -27,8 +28,14 @@ func rootPage( w http.ResponseWriter, r *http.Request ) {
   url, err := io.ReadAll(r.Body)  // получаем url из тела запроса
   if err != nil { http.Error( w, err.Error(), http.StatusInternalServerError ); return }
 
-  id := generate_random_id()  // генерируем новый случайный id
-  mapIdUrl[id] = string(url)  // запоминаем пару id - url
+  // генерируем новый id
+  var id string
+  for {
+    id = generateRandomID()  // генерируем id
+    if _, exists := mapURL[id]; !exists { break }  // проверяем чтобы не было повтора id
+  } // for
+
+  mapURL[id] = string(url)  // запоминаем пару id - url
 
   w.Header().Set("content-type","text/plain")
   w.WriteHeader(http.StatusCreated)
@@ -42,7 +49,7 @@ func idPage( w http.ResponseWriter, r *http.Request ) {
 
   id := r.PathValue("id")  // получаем параметр id из запроса
 
-  url := mapIdUrl[id]
+  url := mapURL[id]
   if url == "" { BadRequest(w,r); return }  // если нет такого id
 
   http.Redirect( w, r, url, http.StatusTemporaryRedirect )
@@ -57,7 +64,7 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 //------------------------------------------------------------------------------
 func main() {
 
-  mapIdUrl = make(map[string]string)
+  mapURL = make(map[string]string)
 
   mux := http.NewServeMux()
   mux.HandleFunc( "POST /{$}", rootPage )
