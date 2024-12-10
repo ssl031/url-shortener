@@ -7,7 +7,7 @@ import (
   "math/rand"
 )
 
-var mapURL map[string]string  // карта mapURL[id] -> url
+var mapURL = make( map[string]string )  // карта mapURL[id] -> url
 // желательно сделать защиту этой map
 
 //------------------------------------------------------------------------------
@@ -63,8 +63,6 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 
 //------------------------------------------------------------------------------
 func main() {
-
-  mapURL = make(map[string]string)
 
   mux := http.NewServeMux()
   mux.HandleFunc( "POST /{$}", rootPage )
