@@ -11,8 +11,8 @@ import (
 
 //var mapShortURL = make( map[string]string )  // карта mapShortURL[shortURL] -> targetURL
 
-type t_urlPair struct{ targetURL, shortURL string }  // пара targetURL - shortURL
-var urlPairs []t_urlPair  // пары полученные при тестировании
+type urlPairT struct{ targetURL, shortURL string }  // пара targetURL - shortURL
+var  urlPairs []urlPairT  // пары полученные при тестировании
 
 //------------------------------------------------------------------------------
 func TestRootPage(t *testing.T) {
@@ -40,10 +40,11 @@ func TestRootPage(t *testing.T) {
       assert.Equal(t, "text/plain", res.Header.Get("Content-Type"), "Content-Type")  // проверяем Content-Type
 
       resBody, _ := io.ReadAll(res.Body)  // получаем тело ответа
+      res.Body.Close()
       shortURL := string(resBody)         // в теле должен быть shortURL
       assert.Contains(t, shortURL, "http://localhost:8080/", "Полученная короткая ссылка")
 
-      urlPairs = append( urlPairs, t_urlPair{ test.targetURL, shortURL } )  // запоминаем целевой URL и его короткую ссылку
+      urlPairs = append( urlPairs, urlPairT{ test.targetURL, shortURL } )  // запоминаем целевой URL и его короткую ссылку
 
     }) // func, Run
   } // for tests
@@ -55,7 +56,7 @@ func TestIdPage(t *testing.T) {
   // проверка полученных коротких ссылок
 
   // добавляем "плохую" короткую ссылку - для проверки BadRequest
-  urlPairs = append( urlPairs, t_urlPair{ "", "http://localhost:8080/BAD-SHORT-URL" } )
+  urlPairs = append( urlPairs, urlPairT{ "", "http://localhost:8080/BAD-SHORT-URL" } )
 
   for _, pair := range urlPairs {
     t.Run("get by short-url "+pair.shortURL, func(t *testing.T) {
@@ -67,6 +68,7 @@ func TestIdPage(t *testing.T) {
 
       idPage(w, req)     // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
+      defer res.Body.Close()
 
       wantCode := http.StatusTemporaryRedirect  // ожидаем код ответа 307 Temporary Redirect
       if pair.targetURL == "" { wantCode = http.StatusBadRequest }  // если тестируем "плохую" короткую ссылку (targetURL==""), то ожидаем код ответа 400 Bad Request
