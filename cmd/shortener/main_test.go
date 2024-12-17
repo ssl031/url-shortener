@@ -34,13 +34,13 @@ func TestRootPage(t *testing.T) {
 
       rootPage(w, req)   // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
+      defer res.Body.Close()
 
       assert.Equal(t, test.wantCode, res.StatusCode, "Код ответа")  // проверяем код ответа
 
       assert.Equal(t, "text/plain", res.Header.Get("Content-Type"), "Content-Type")  // проверяем Content-Type
 
       resBody, _ := io.ReadAll(res.Body)  // получаем тело ответа
-      res.Body.Close()
       shortURL := string(resBody)         // в теле должен быть shortURL
       assert.Contains(t, shortURL, "http://localhost:8080/", "Полученная короткая ссылка")
 
@@ -68,10 +68,10 @@ func TestIdPage(t *testing.T) {
 
       idPage(w, req)     // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
-      defer res.Body.Close()
+      res.Body.Close()   // тело ответа нам не нужно, сразу закроем его
 
       wantCode := http.StatusTemporaryRedirect  // ожидаем код ответа 307 Temporary Redirect
-      if pair.targetURL == "" { wantCode = http.StatusBadRequest }  // если тестируем "плохую" короткую ссылку (targetURL==""), то ожидаем код ответа 400 Bad Request
+      if pair.targetURL == "" { wantCode = http.StatusBadRequest }  // если тестируем "плохую" короткую ссылку (targetURL==""), тогда ожидаем код ответа 400 Bad Request
 
       assert.Equal(t, wantCode, res.StatusCode, "Код ответа")  // проверяем код ответа
 

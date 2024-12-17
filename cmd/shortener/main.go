@@ -47,7 +47,10 @@ func rootPage( w http.ResponseWriter, r *http.Request ) {
 //------------------------------------------------------------------------------
 func idPage( w http.ResponseWriter, r *http.Request ) {
 
-  id := r.PathValue("id")  // получаем параметр id из запроса
+  // получаем параметр id из запроса  # GET /mYFl7FlK  --> id="mYFl7FlK"
+  id := r.URL.Path
+  if len(id) > 0 && id[0] == '/' { id = id[1:] }  // убираем первый символ /
+  //fmt.Printf("id=[%s]\n",id)
 
   url := mapURL[id]
   if url == "" { BadRequest(w,r); return }  // если нет такого id
@@ -66,7 +69,7 @@ func main() {
 
   mux := http.NewServeMux()
   mux.HandleFunc( "POST /{$}", rootPage )
-  mux.HandleFunc( "GET /{id}", idPage )
+  mux.HandleFunc( "GET /",     idPage )
   mux.HandleFunc( "/",         BadRequest )
 
   err := http.ListenAndServe( "localhost:8080", mux )
