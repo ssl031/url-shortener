@@ -5,6 +5,8 @@ import (
   "io"
   "net/http"
   "math/rand"
+
+  "github.com/go-chi/chi/v5"
 )
 
 var mapURL = make( map[string]string )  // карта mapURL[id] -> url
@@ -24,6 +26,8 @@ func generateRandomID() string {
 
 //------------------------------------------------------------------------------
 func rootPage( w http.ResponseWriter, r *http.Request ) {
+
+  //fmt.Printf("rootPage\n")
 
   url, err := io.ReadAll(r.Body)  // получаем url из тела запроса
   if err != nil { http.Error( w, err.Error(), http.StatusInternalServerError ); return }
@@ -50,7 +54,9 @@ func idPage( w http.ResponseWriter, r *http.Request ) {
   // получаем параметр id из запроса  # GET /mYFl7FlK  --> id="mYFl7FlK"
   id := r.URL.Path
   if len(id) > 0 && id[0] == '/' { id = id[1:] }  // убираем первый символ /
-  //fmt.Printf("id=[%s]\n",id)
+  //id := chi.URLParam(r,"id")
+
+  //fmt.Printf("idPage id=[%s]\n",id)
 
   url := mapURL[id]
   if url == "" { BadRequest(w,r); return }  // если нет такого id
@@ -67,12 +73,17 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 //------------------------------------------------------------------------------
 func main() {
 
-  mux := http.NewServeMux()
-  mux.HandleFunc( "POST /{$}", rootPage )
-  mux.HandleFunc( "GET /",     idPage )
-  mux.HandleFunc( "/",         BadRequest )
+  rt := chi.NewRouter()
 
-  err := http.ListenAndServe( "localhost:8080", mux )
+  rt.Post("/",     rootPage )
+  rt.Get ("/{id}", idPage )
+
+  //mux := http.NewServeMux()
+  //mux.HandleFunc( "POST /{$}", rootPage )
+  //mux.HandleFunc( "GET /",     idPage )
+  //mux.HandleFunc( "/",         BadRequest )
+
+  err := http.ListenAndServe( "localhost:8080", rt )
   if err != nil { panic(err) }
 
 } // func main
