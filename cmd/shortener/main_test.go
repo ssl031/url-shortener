@@ -7,6 +7,8 @@ import (
   "strings"
   "testing"
   "github.com/stretchr/testify/assert"
+
+  "github.com/ssl031/url-shortener/internal/config"
 )
 
 //var mapShortURL = make( map[string]string )  // карта mapShortURL[shortURL] -> targetURL
@@ -16,6 +18,9 @@ var  urlPairs []urlPairT  // пары полученные при тестиро
 
 //------------------------------------------------------------------------------
 func TestRootPage(t *testing.T) {
+
+  config.ServerAddress =        "localhost:8080"
+  config.ServerBaseURL = "http://localhost:8080"
 
   tests := []struct {
     name      string
@@ -42,7 +47,7 @@ func TestRootPage(t *testing.T) {
 
       resBody, _ := io.ReadAll(res.Body)  // получаем тело ответа
       shortURL := string(resBody)         // в теле должен быть shortURL
-      assert.Contains(t, shortURL, "http://localhost:8080/", "Полученная короткая ссылка")
+      assert.Contains(t, shortURL, config.ServerBaseURL+"/", "Полученная короткая ссылка")
 
       urlPairs = append( urlPairs, urlPairT{ test.targetURL, shortURL } )  // запоминаем целевой URL и его короткую ссылку
 
@@ -56,7 +61,7 @@ func TestIdPage(t *testing.T) {
   // проверка полученных коротких ссылок
 
   // добавляем "плохую" короткую ссылку - для проверки BadRequest
-  urlPairs = append( urlPairs, urlPairT{ "", "http://localhost:8080/BAD-SHORT-URL" } )
+  urlPairs = append( urlPairs, urlPairT{ "", config.ServerBaseURL+"/BAD-SHORT-URL" } )
 
   for _, pair := range urlPairs {
     t.Run("get by short-url "+pair.shortURL, func(t *testing.T) {

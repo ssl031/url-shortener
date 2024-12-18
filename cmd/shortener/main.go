@@ -7,6 +7,8 @@ import (
   "math/rand"
 
   "github.com/go-chi/chi/v5"
+
+  "github.com/ssl031/url-shortener/internal/config"
 )
 
 var mapURL = make( map[string]string )  // карта mapURL[id] -> url
@@ -44,7 +46,7 @@ func rootPage( w http.ResponseWriter, r *http.Request ) {
   w.Header().Set("content-type","text/plain")
   w.WriteHeader(http.StatusCreated)
 
-  fmt.Fprintf(w,"http://localhost:8080/%s",id)
+  fmt.Fprintf( w, "%s/%s", config.ServerBaseURL, id)  // http://localhost:8080/uD2wgoIb
 
 } // func mainPage
 
@@ -73,6 +75,10 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 //------------------------------------------------------------------------------
 func main() {
 
+  config.Parse()  // получаем конфигурацию
+  //fmt.Printf("ServerAddress = [%s]\n",config.ServerAddress)
+  //fmt.Printf("ServerBaseURL = [%s]\n",config.ServerBaseURL)
+
   rt := chi.NewRouter()
 
   rt.Post("/",     rootPage )
@@ -83,7 +89,7 @@ func main() {
   //mux.HandleFunc( "GET /",     idPage )
   //mux.HandleFunc( "/",         BadRequest )
 
-  err := http.ListenAndServe( "localhost:8080", rt )
+  err := http.ListenAndServe( config.ServerAddress, rt )
   if err != nil { panic(err) }
 
 } // func main
