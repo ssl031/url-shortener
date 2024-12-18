@@ -75,7 +75,7 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 //------------------------------------------------------------------------------
 func main() {
 
-  config.Parse()  // получаем конфигурацию
+  config.Get()  // получаем конфигурацию
   //fmt.Printf("ServerAddress = [%s]\n",config.ServerAddress)
   //fmt.Printf("ServerBaseURL = [%s]\n",config.ServerBaseURL)
 

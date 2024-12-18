@@ -19,7 +19,7 @@ var  urlPairs []urlPairT  // пары полученные при тестиро
 //------------------------------------------------------------------------------
 func TestRootPage(t *testing.T) {
 
-  config.Parse()  // получаем конфигурацию
+  config.Get()  // получаем конфигурацию
   // config.ServerAddress - адрес + порт на котором запускается сервис      # localhost:8080
   // config.ServerBaseURL - базовый адрес результирующего сокращённого URL  # http://localhost:8080
 
