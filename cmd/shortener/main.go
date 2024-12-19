@@ -5,14 +5,16 @@ import (
   "io"
   "net/http"
   "math/rand"
+  "time"
 
   "github.com/go-chi/chi/v5"
+  "go.uber.org/zap"
 
   "github.com/ssl031/url-shortener/internal/config"
 )
 
-var mapURL = make( map[string]string )  // карта mapURL[id] -> url
-// желательно сделать защиту этой map
+var mapURL = make( map[string]string )  // карта mapURL[id] -> url  # желательно сделать защиту этой map
+var logger *zap.Logger  // логгер
 
 //------------------------------------------------------------------------------
 // генерирует случайный id (строка 8 символов)
@@ -74,24 +76,76 @@ func BadRequest( w http.ResponseWriter, r *http.Request ) {
 
 //------------------------------------------------------------------------------
 func main() {
+  var err error
 
   config.Get()  // получаем конфигурацию
   //fmt.Printf("ServerAddress = [%s]\n",config.ServerAddress)
   //fmt.Printf("ServerBaseURL = [%s]\n",config.ServerBaseURL)
 
+  logger, err = zap.NewDevelopment()  // создаём логгер
+  if err != nil { panic(err) }
+  defer logger.Sync()  // при завершении выведем оставшиеся сообщения из буфера
+
   rt := chi.NewRouter()
 
-  rt.Post("/",     rootPage )
-  rt.Get ("/{id}", idPage )
+  rt.Post("/",     withLogging(rootPage) )
+  rt.Get ("/{id}", withLogging(idPage) )
 
   //mux := http.NewServeMux()
   //mux.HandleFunc( "POST /{$}", rootPage )
   //mux.HandleFunc( "GET /",     idPage )
   //mux.HandleFunc( "/",         BadRequest )
 
-  err := http.ListenAndServe( config.ServerAddress, rt )
+  logger.Info("Starting server",zap.String("address",config.ServerAddress))
+
+  err = http.ListenAndServe( config.ServerAddress, rt )
   if err != nil { panic(err) }
 
 } // func main
+
+//------------------------------------------------------------------------------
+// добавляем реализацию http.ResponseWriter
+type loggingResponseWriter struct {
+  http.ResponseWriter  // оригинальный http.ResponseWriter
+  status int  // статус ответа
+  size   int  // размер ответа
+}
+
+//------------------------------------------------------------------------------
+func (lrw *loggingResponseWriter) Write(b []byte) (int, error) {
+  // записываем ответ, используя оригинальный http.ResponseWriter
+  size, err := lrw.ResponseWriter.Write(b)  // вызываем оригинальный http.ResponseWriter.Write()
+  lrw.size += size  // сохраняем размер ответа (суммируем)
+  return size, err
+}
+
+//------------------------------------------------------------------------------
+func (lrw *loggingResponseWriter) WriteHeader(statusCode int) {
+  lrw.ResponseWriter.WriteHeader(statusCode)  // вызываем оригинальный http.ResponseWriter.WriteHeader()
+  lrw.status = statusCode // сохраняем статус статуса
+}
+
+//------------------------------------------------------------------------------
+// добавляет логирование запросов и ответов
+func withLogging(h http.HandlerFunc) http.HandlerFunc {
+  return func(w http.ResponseWriter, r *http.Request) {
+    start := time.Now()  // время начала обработки запроса
+
+    lrw := loggingResponseWriter {
+      ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
+    } // 
+
+    h.ServeHTTP( &lrw, r ) // вызываем оригинальный обработчик запроса
+
+    logger.Info( "request",
+      zap.String("method",r.Method),              // метод запроса
+      zap.String("uri",r.RequestURI),             // URI запроса
+      zap.Duration("duration",time.Since(start)), // продолжительность выполнения запроса
+      zap.Int("status",lrw.status),  // статус ответа
+      zap.Int("size",  lrw.size),    // размер ответа
+    ) // logger
+
+  } // return func
+} // func
 
 //------------------------------------------------------------------------------
