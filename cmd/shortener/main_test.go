@@ -4,6 +4,7 @@ import (
   "io"
   "net/http"
   "net/http/httptest"
+  "encoding/json"
   "strings"
   "testing"
   "github.com/stretchr/testify/assert"
@@ -17,19 +18,27 @@ type urlPairT struct{ targetURL, shortURL string }  // пара targetURL - shor
 var  urlPairs []urlPairT  // пары полученные при тестировании
 
 //------------------------------------------------------------------------------
-func TestRootPage(t *testing.T) {
+// Инициализация вместо main
+func TestInit(t *testing.T) {
 
   config.Get()  // получаем конфигурацию
   // config.ServerAddress - адрес + порт на котором запускается сервис      # localhost:8080
   // config.ServerBaseURL - базовый адрес результирующего сокращённого URL  # http://localhost:8080
+
+  loggerInit()  // инициализируем logger
+
+} // func
+
+//------------------------------------------------------------------------------
+func TestRootPage(t *testing.T) {
 
   tests := []struct {
     name      string
     targetURL string
     wantCode  int
   }{
-    { name: "create shortURL OK #1", targetURL: "https://practicum.yandex.ru/", wantCode: http.StatusCreated },
-    { name: "create shortURL OK #2", targetURL: "http://2ip.ru/",               wantCode: http.StatusCreated },
+    { name: "create shortURL OK #1", targetURL: "http://practicum.yandex.ru/", wantCode: http.StatusCreated },
+    { name: "create shortURL OK #2", targetURL: "http://2ip.ru/",              wantCode: http.StatusCreated },
   } // tests
 
   for _, test := range tests {
@@ -51,6 +60,45 @@ func TestRootPage(t *testing.T) {
       assert.Contains(t, shortURL, config.ServerBaseURL+"/", "Полученная короткая ссылка")
 
       urlPairs = append( urlPairs, urlPairT{ test.targetURL, shortURL } )  // запоминаем целевой URL и его короткую ссылку
+
+    }) // func, Run
+  } // for tests
+
+} // func
+
+//------------------------------------------------------------------------------
+func TestApiPage(t *testing.T) {
+
+  tests := []struct {
+    name      string
+    targetURL string
+    wantCode  int
+  }{
+    { name: "create apiShortURL OK #1", targetURL: "http://ya.ru/",   wantCode: http.StatusCreated },
+    { name: "create apiShortURL OK #2", targetURL: "http://mail.ru/", wantCode: http.StatusCreated },
+  } // tests
+
+  for _, test := range tests {
+    t.Run(test.name, func(t *testing.T) {
+
+      jsonRequest := `{"url":"`+test.targetURL+`"}`
+      req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(jsonRequest))  // создаём запрос
+      w := httptest.NewRecorder()  // создаём ResponseRecorder (implementation of http.ResponseWriter)
+
+      apiPage(w, req)    // вызываем обработчик
+      res := w.Result()  // получаем ответ (Response)
+      defer res.Body.Close()
+
+      assert.Equal(t, test.wantCode, res.StatusCode, "Код ответа")  // проверяем код ответа
+      assert.Equal(t, "application/json", res.Header.Get("Content-Type"), "Content-Type")  // проверяем Content-Type
+
+      var apiRes apiResponseT  // ответ (из json)
+      err := json.NewDecoder(res.Body).Decode(&apiRes)  // преобразуем json-ответ в объект apiRes
+      assert.NoError(t, err, "error decode response json")
+
+      assert.Contains(t, apiRes.Result, config.ServerBaseURL+"/", "Полученная короткая ссылка")  // в apiRes.Result должен быть shortURL
+
+      urlPairs = append( urlPairs, urlPairT{ test.targetURL, apiRes.Result } )  // запоминаем целевой URL и его короткую ссылку
 
     }) // func, Run
   } // for tests

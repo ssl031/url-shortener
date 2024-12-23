@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "io"
+  "encoding/json"
   "net/http"
   "math/rand"
 
@@ -28,6 +29,7 @@ func generateRandomID() string {
 
 //------------------------------------------------------------------------------
 func rootPage( w http.ResponseWriter, r *http.Request ) {
+  // POST / http://mail.ru  --> http://localhost:8080/uD2wgoIb
 
   //fmt.Printf("rootPage\n")
 
@@ -48,10 +50,60 @@ func rootPage( w http.ResponseWriter, r *http.Request ) {
 
   fmt.Fprintf( w, "%s/%s", config.ServerBaseURL, id)  // http://localhost:8080/uD2wgoIb
 
-} // func mainPage
+} // func
+
+//------------------------------------------------------------------------------
+type apiRequestT struct {
+  URL string `json:"url"`
+}
+
+type apiResponseT struct {
+  Result string `json:"result"`
+}
+
+func apiPage( w http.ResponseWriter, r *http.Request ) {
+  // POST /api/shorten {"url":"http://mail.ru"}  --> {"result":"http://localhost:8080/uD2wgoIb"}
+
+  logger.Debug("got request", zap.String("method",r.Method), zap.String("path",r.URL.Path))
+
+  var req apiRequestT  // запрос (из json)
+  // преобразуем json-запрос в объект req
+  dec := json.NewDecoder(r.Body)
+  if err := dec.Decode(&req); err != nil {
+    logger.Debug("cannot decode request JSON body", zap.Error(err))
+    //w.WriteHeader(http.StatusInternalServerError)
+    http.Error( w, "cannot decode request JSON body", http.StatusBadRequest )
+    return
+  } // if
+
+  // генерируем новый id
+  var id string
+  for {
+    id = generateRandomID()  // генерируем id
+    if _, exists := mapURL[id]; !exists { break }  // проверяем чтобы не было повтора id
+  } // for
+
+  mapURL[id] = string(req.URL)  // запоминаем пару id - url
+
+  // готовим объект ответа
+  resp := apiResponseT { Result : config.ServerBaseURL+"/"+id }  // http://localhost:8080/uD2wgoIb
+
+  w.Header().Set("content-type","application/json")
+  w.WriteHeader(http.StatusCreated)
+
+  // преобразуем объект ответа в json
+  enc := json.NewEncoder(w)
+  if err := enc.Encode(resp); err != nil {
+    logger.Debug("error encoding response", zap.Error(err))
+    return
+  }
+
+  //logger.Debug("response", zap.String("json",???))
+} // func
 
 //------------------------------------------------------------------------------
 func idPage( w http.ResponseWriter, r *http.Request ) {
+  //GET /uD2wgoIb  --> Redirect Location http://mail.ru
 
   // получаем параметр id из запроса  # GET /mYFl7FlK  --> id="mYFl7FlK"
   id := r.URL.Path
@@ -65,7 +117,7 @@ func idPage( w http.ResponseWriter, r *http.Request ) {
 
   http.Redirect( w, r, url, http.StatusTemporaryRedirect )
 
-} // func mainPage
+} // func
 
 //------------------------------------------------------------------------------
 func BadRequest( w http.ResponseWriter, r *http.Request ) {
@@ -85,8 +137,9 @@ func main() {
 
   rt := chi.NewRouter()
 
-  rt.Post("/",     withLogging(rootPage) )
-  rt.Get ("/{id}", withLogging(idPage) )
+  rt.Post("/",            withLogging(rootPage) )  // POST /            http://mail.ru           --> http://localhost:8080/uD2wgoIb
+  rt.Post("/api/shorten", withLogging(apiPage) )   // POST /api/shorten {"url":"http://mail.ru"} --> {"result":"http://localhost:8080/uD2wgoIb"}
+  rt.Get ("/{id}",        withLogging(idPage) )    // GET  /uD2wgoIb                             --> Redirect Location http://mail.ru
 
   //mux := http.NewServeMux()
   //mux.HandleFunc( "POST /{$}", rootPage )
