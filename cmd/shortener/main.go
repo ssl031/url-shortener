@@ -137,9 +137,10 @@ func main() {
 
   rt := chi.NewRouter()
 
-  rt.Post("/",            withLogging(rootPage) )  // POST /            http://mail.ru           --> http://localhost:8080/uD2wgoIb
-  rt.Post("/api/shorten", withLogging(apiPage) )   // POST /api/shorten {"url":"http://mail.ru"} --> {"result":"http://localhost:8080/uD2wgoIb"}
-  rt.Get ("/{id}",        withLogging(idPage) )    // GET  /uD2wgoIb                             --> Redirect Location http://mail.ru
+  rt.Use( withLogging, gzipMiddleware )  // middleware logger, gzip
+  rt.Post("/",            rootPage )  // POST /            http://mail.ru           --> http://localhost:8080/uD2wgoIb
+  rt.Post("/api/shorten", apiPage )   // POST /api/shorten {"url":"http://mail.ru"} --> {"result":"http://localhost:8080/uD2wgoIb"}
+  rt.Get ("/{id}",        idPage )    // GET  /uD2wgoIb                             --> Redirect Location http://mail.ru
 
   //mux := http.NewServeMux()
   //mux.HandleFunc( "POST /{$}", rootPage )

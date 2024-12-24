@@ -42,8 +42,8 @@ func (lrw *loggingResponseWriter) WriteHeader(statusCode int) {
 
 //------------------------------------------------------------------------------
 // добавляет логирование запросов и ответов
-func withLogging(h http.HandlerFunc) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
+func withLogging(h http.Handler) http.Handler {
+  return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
     start := time.Now()  // время начала обработки запроса
 
     lrw := loggingResponseWriter {
@@ -60,7 +60,7 @@ func withLogging(h http.HandlerFunc) http.HandlerFunc {
       zap.Int("size",  lrw.size),    // размер ответа
     ) // logger
 
-  } // return func
+  } ) // return http.HandlerFunc func
 } // func
 
 //------------------------------------------------------------------------------
