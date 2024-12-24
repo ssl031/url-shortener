@@ -5,6 +5,8 @@ import (
   "compress/gzip"
   "net/http"
   "strings"
+
+//"go.uber.org/zap"
 )
 
 // compressResponseWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
@@ -24,16 +26,20 @@ func NewCompressResponseWriter(w http.ResponseWriter) *compressResponseWriter {
 
 //------------------------------------------------------------------------------
 func (c *compressResponseWriter) Header() http.Header {
+  //logger.Debug("compressResponseWriter.Header")
   return c.w.Header()
 } // func
 
 //------------------------------------------------------------------------------
 func (c *compressResponseWriter) Write(p []byte) (int, error) {
+  //logger.Debug("compressResponseWriter.Write", zap.String("header.content-type",c.w.Header().Get("Content-Type")))
   return c.zw.Write(p)
 } // func
 
 //------------------------------------------------------------------------------
 func (c *compressResponseWriter) WriteHeader(statusCode int) {
+  //logger.Debug("compressResponseWriter.WriteHeader", zap.String("header.content-type",c.w.Header().Get("Content-Type")))
+
   if statusCode < 300 {
     c.w.Header().Set("Content-Encoding","gzip")
   }
@@ -81,6 +87,7 @@ func (c *compressReadCloser) Close() error {
 //------------------------------------------------------------------------------
 func gzipMiddleware(h http.Handler) http.Handler {
   return http.HandlerFunc( func(w http.ResponseWriter, r *http.Request) {
+    //logger.Debug("gzipMiddleware")
     // по умолчанию устанавливаем оригинальный http.ResponseWriter как тот, который будем передавать следующей функции
     ow := w
 

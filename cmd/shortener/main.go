@@ -142,11 +142,6 @@ func main() {
   rt.Post("/api/shorten", apiPage )   // POST /api/shorten {"url":"http://mail.ru"} --> {"result":"http://localhost:8080/uD2wgoIb"}
   rt.Get ("/{id}",        idPage )    // GET  /uD2wgoIb                             --> Redirect Location http://mail.ru
 
-  //mux := http.NewServeMux()
-  //mux.HandleFunc( "POST /{$}", rootPage )
-  //mux.HandleFunc( "GET /",     idPage )
-  //mux.HandleFunc( "/",         BadRequest )
-
   logger.Info("Starting server",zap.String("address",config.ServerAddress))
 
   err = http.ListenAndServe( config.ServerAddress, rt )
