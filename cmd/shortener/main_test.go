@@ -20,12 +20,16 @@ var  urlPairs []urlPairT  // пары полученные при тестиро
 //------------------------------------------------------------------------------
 // Инициализация вместо main
 func TestInit(t *testing.T) {
+  var err error
 
   config.Get()  // получаем конфигурацию
   // config.ServerAddress - адрес + порт на котором запускается сервис      # localhost:8080
   // config.ServerBaseURL - базовый адрес результирующего сокращённого URL  # http://localhost:8080
 
   loggerInit()  // инициализируем logger
+
+  storage, err = NewStorage( config.FileStorage )  // открываем хранилище
+  assert.NoError(t, err, "open storage")
 
 } // func
 

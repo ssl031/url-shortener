@@ -15,8 +15,8 @@ type Storage struct {
 // тип: запись в файле хранилища
 // {"uuid":"2","short_url":"edVPg3ks","original_url":"http://ya.ru"}
 type StorageRecord struct {
-  ShortURL    string `json:short_url`
-  OriginalURL string `json:original_url`
+  ShortURL    string `json:"short_url"`
+  OriginalURL string `json:"original_url"`
 }
 
 //------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ func NewStorage( filename string ) (*Storage, error) {
   file, err := os.OpenFile( filename, os.O_RDWR|os.O_CREATE, 0644)  // чтение-запись, создать файл если его нет, rw-r--r--
   if err != nil { return nil, err }
 
-  _, err = file.Seek( 0, os.SEEK_END )  // переходим в конец файла - для последующего добавления новых записей
+  _, err = file.Seek( 0, io.SeekEnd )  // переходим в конец файла - для последующего добавления новых записей
   if err != nil { return nil, err }
 
   return &Storage{
@@ -42,7 +42,7 @@ func NewStorage( filename string ) (*Storage, error) {
 func (st *Storage) Load( mapURL map[string]string ) error {
 
   // переходим в начало файла - для чтения всех записей
-  _, err := st.file.Seek( 0, os.SEEK_SET )
+  _, err := st.file.Seek( 0, io.SeekStart )
   if err != nil { return err }
 
   // считываем записи, декодируем их из json и сохраняем в mapURL
@@ -57,7 +57,7 @@ func (st *Storage) Load( mapURL map[string]string ) error {
   } // for
 
   // переходим в конец файла - для последующего добавления новых записей
-  _, err = st.file.Seek( 0, os.SEEK_END )
+  _, err = st.file.Seek( 0, io.SeekEnd )
   return err
 } // func
 
