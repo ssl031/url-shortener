@@ -14,6 +14,7 @@ import (
 )
 
 var mapURL = make( map[string]string )  // карта mapURL[id] -> url  # желательно сделать защиту этой map
+var storage *Storage  // хранилище записей ShortURL - OriginalURL
 
 //------------------------------------------------------------------------------
 // генерирует случайный id (строка 8 символов)
@@ -42,6 +43,9 @@ func rootPage( w http.ResponseWriter, r *http.Request ) {
     id = generateRandomID()  // генерируем id
     if _, exists := mapURL[id]; !exists { break }  // проверяем чтобы не было повтора id
   } // for
+
+  err = storage.WriteRecord( id, string(url) )  // сохраняем пару id - url в хранилище
+  if err != nil { http.Error( w, err.Error(), http.StatusInternalServerError ); return }
 
   mapURL[id] = string(url)  // запоминаем пару id - url
 
@@ -82,6 +86,9 @@ func apiPage( w http.ResponseWriter, r *http.Request ) {
     id = generateRandomID()  // генерируем id
     if _, exists := mapURL[id]; !exists { break }  // проверяем чтобы не было повтора id
   } // for
+
+  err := storage.WriteRecord( id, string(req.URL) )  // сохраняем пару id - url в хранилище
+  if err != nil { http.Error( w, err.Error(), http.StatusInternalServerError ); return }
 
   mapURL[id] = string(req.URL)  // запоминаем пару id - url
 
@@ -135,6 +142,16 @@ func main() {
   loggerInit()  // инициализируем logger
   defer logger.Sync()  // при завершении выведем оставшиеся сообщения из буфера
 
+  // открываем хранилище
+  storage, err = NewStorage( config.FileStorage )
+  if err != nil { logger.Fatal("Open Storage",zap.Error(err)) }
+  defer storage.Close()
+
+  // считываем все данные из хранилища в mapURL
+  err = storage.Load( mapURL )
+  if err != nil { logger.Fatal("Storage Load",zap.Error(err)) }
+  //fmt.Println(mapURL)
+
   rt := chi.NewRouter()
 
   rt.Use( withLogging, gzipMiddleware )  // middleware logger, gzip
@@ -143,6 +160,7 @@ func main() {
   rt.Get ("/{id}",        idPage )    // GET  /uD2wgoIb                             --> Redirect Location http://mail.ru
 
   logger.Info("Starting server",zap.String("address",config.ServerAddress))
+  defer logger.Info("STOP server")
 
   err = http.ListenAndServe( config.ServerAddress, rt )
   if err != nil { panic(err) }
