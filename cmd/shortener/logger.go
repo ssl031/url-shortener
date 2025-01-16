@@ -7,23 +7,33 @@ import (
   "go.uber.org/zap"
 )
 
-// реализация http.ResponseWriter для логгера
+// реализация http.ResponseWriter для логера
 type loggingResponseWriter struct {
   http.ResponseWriter  // оригинальный http.ResponseWriter
   status int  // статус ответа
   size   int  // размер ответа
 }
 
-var logger *zap.Logger  // логгер
+var logger *zap.Logger = zap.NewNop()  // логер, по умолчанию = no-op-логер, который не выводит никаких сообщений
 
 //------------------------------------------------------------------------------
-// Инициализация логгера logger
-func loggerInit() {
-  var err error
+// Инициализация логера logger
+func loggerInit(level string) error {
 
-  logger, err = zap.NewDevelopment()  // создаём логгер
-  if err != nil { panic(err) }
+  // преобразуем уровень логирования из текста в zap.AtomicLevel
+  atomicLevel, err := zap.ParseAtomicLevel(level)
+  if err != nil { return err }
 
+  // создаём конфигурацию логера
+  cfg := zap.NewDevelopmentConfig()
+  cfg.Level = atomicLevel  // устанавливаем уровень логирования
+
+  // создаём логер на основе конфигурации
+  zl, err := cfg.Build()
+  if err != nil { return err }
+
+  logger = zl  // устанавливаем логер
+  return nil
 }
 
 //------------------------------------------------------------------------------
