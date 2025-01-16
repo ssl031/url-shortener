@@ -26,7 +26,8 @@ func TestInit(t *testing.T) {
   // config.ServerAddress - адрес + порт на котором запускается сервис      # localhost:8080
   // config.ServerBaseURL - базовый адрес результирующего сокращённого URL  # http://localhost:8080
 
-  loggerInit()  // инициализируем logger
+  err = loggerInit( config.LogLevel )  // инициализируем logger
+  if err != nil { panic(err) }
 
   storage, err = NewStorage( config.FileStorage )  // открываем хранилище
   assert.NoError(t, err, "open storage")
