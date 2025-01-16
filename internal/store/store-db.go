@@ -21,6 +21,14 @@ type StoreDB struct {
 //  OriginalURL string `json:"original_url"`
 //}
 
+// таблица URL в БД
+const SQL_CREATE_TABLE = `
+CREATE TABLE IF NOT EXISTS url (
+  id           serial PRIMARY KEY,
+  short_url    varchar(40)  NOT NULL,
+  original_url varchar(500) NOT NULL
+)`
+
 //------------------------------------------------------------------------------
 // Создание нового объекта типа StoreDB
 // - dsn - Data Source Name
@@ -29,6 +37,12 @@ func NewStoreDB( dsn string ) (*StoreDB, error) {
   // открываем БД
   db, err := sql.Open( "pgx", dsn )
   if err != nil { return nil, err }
+
+  _, err = db.Exec( SQL_CREATE_TABLE )  // создаём таблицу в БД если её ещё нет
+  if err != nil {
+    db.Close()
+    return nil, err
+  }
 
   return &StoreDB{ db: db }, nil // return StoreDB, err
 } // func
@@ -47,29 +61,22 @@ func (sd *StoreDB) Ping(ctx context.Context) error {
 // Считывает все данные из хранилища в mapURL
 func (sd *StoreDB) Load(ctx context.Context) error {
 
-/*
-  // переходим в начало файла - для чтения всех записей
-  _, err := sf.file.Seek( 0, io.SeekStart )
+  rows, err := sd.db.QueryContext(ctx,"SELECT short_url, original_url from url")
   if err != nil { return err }
+  defer rows.Close()  // закрываем rows перед выходом из функции
 
-  // считываем записи, декодируем их из json и сохраняем в mapURL
-  decoder := json.NewDecoder(sf.file)
-  for {
+  for rows.Next() {  // перебираем записи
     if err = ctx.Err(); err != nil { return err }  // проверяем прерывание контекста
 
-    r := StoreDBRecord{}        // подготовим пустой объект
-    err = decoder.Decode( &r )  // декодируем запись из json
-    if err == io.EOF { break }
+    var shortURL, originalURL string
+    err = rows.Scan( &shortURL, &originalURL )  // получаем значения полей записи
     if err != nil { return err }
 
-    mapURL[r.ShortURL] = r.OriginalURL  // запоминаем пару shortURL - originalURL
-  } // for
+    mapURL[shortURL] = originalURL  // запоминаем в Памяти пару shortURL - originalURL
+  }
+  err = rows.Err()  // ошибка была?
 
-  // переходим в конец файла - для последующего добавления новых записей
-  _, err = sf.file.Seek( 0, io.SeekEnd )
   return err
-*/
-  return nil
 } // func
 
 //------------------------------------------------------------------------------
@@ -77,16 +84,12 @@ func (sd *StoreDB) Load(ctx context.Context) error {
 func (sd *StoreDB) SaveURL(ctx context.Context, originalURL string) (shortURL string, err error) {
 
   shortURL = generateNewShortURL()  // генерируем новый уникальный shortURL
-/*
-  r := StoreDBRecord{  // запись для сохранения
-    ShortURL:    shortURL,
-    OriginalURL: originalURL,
-  }
 
-  err = sf.encoder.Encode( &r )  // кодируем запись в json и выводим в файл
+  // добавляем запись в таблицу
+  _, err = sd.db.ExecContext( ctx, "INSERT INTO url (short_url, original_url) VALUES ($1, $2)", shortURL, originalURL )
   if err != nil { return "", err }
-*/
-  mapURL[shortURL] = originalURL  // запоминаем пару shortURL - originalURL
+
+  mapURL[shortURL] = originalURL  // запоминаем в Памяти пару shortURL - originalURL
 
   return shortURL, nil  // OK
 } // func
