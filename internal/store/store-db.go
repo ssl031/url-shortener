@@ -22,7 +22,7 @@ type StoreDB struct {
 //}
 
 // таблица URL в БД
-const SQL_CREATE_TABLE = `
+const sql_CREATE_TABLE = `
 CREATE TABLE IF NOT EXISTS url (
   id           serial PRIMARY KEY,
   short_url    varchar(40)  NOT NULL,
@@ -38,7 +38,7 @@ func NewStoreDB( dsn string ) (*StoreDB, error) {
   db, err := sql.Open( "pgx", dsn )
   if err != nil { return nil, err }
 
-  _, err = db.Exec( SQL_CREATE_TABLE )  // создаём таблицу в БД если её ещё нет
+  _, err = db.Exec( sql_CREATE_TABLE )  // создаём таблицу в БД если её ещё нет
   if err != nil {
     db.Close()
     return nil, err
