@@ -20,9 +20,6 @@ type app struct {
   store store.Store
 }
 
-//var mapURL = make( map[string]string )  // карта mapURL[id] -> url  # желательно сделать защиту этой map
-//var storage *Storage  // хранилище записей URL
-
 //------------------------------------------------------------------------------
 func newApp(s store.Store) *app {
   return &app{ store: s }

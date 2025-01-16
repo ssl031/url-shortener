@@ -10,9 +10,10 @@ import (
   "github.com/stretchr/testify/assert"
 
   "github.com/ssl031/url-shortener/internal/config"
+  "github.com/ssl031/url-shortener/internal/store"
 )
 
-//var mapShortURL = make( map[string]string )  // карта mapShortURL[shortURL] -> targetURL
+var app1 *app  // экземпляр приложения
 
 type urlPairT struct{ targetURL, shortURL string }  // пара targetURL - shortURL
 var  urlPairs []urlPairT  // пары полученные при тестировании
@@ -29,13 +30,15 @@ func TestInit(t *testing.T) {
   err = loggerInit( config.LogLevel )  // инициализируем logger
   if err != nil { panic(err) }
 
-  storage, err = NewStorage( config.FileStorage )  // открываем хранилище
+  storage, err := store.NewStoreMemory()  // открываем хранилище Память
   assert.NoError(t, err, "open storage")
+
+  app1 = newApp( storage )  // создаём экземпляр приложения
 
 } // func
 
 //------------------------------------------------------------------------------
-func TestRootPage(t *testing.T) {
+func TestShorten(t *testing.T) {
 
   tests := []struct {
     name      string
@@ -52,7 +55,7 @@ func TestRootPage(t *testing.T) {
       req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(test.targetURL))  // создаём запрос
       w := httptest.NewRecorder()  // создаём ResponseRecorder (implementation of http.ResponseWriter)
 
-      rootPage(w, req)   // вызываем обработчик
+      app1.shorten(w, req)   // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
       defer res.Body.Close()
 
@@ -72,7 +75,7 @@ func TestRootPage(t *testing.T) {
 } // func
 
 //------------------------------------------------------------------------------
-func TestApiPage(t *testing.T) {
+func TestApiShorten(t *testing.T) {
 
   tests := []struct {
     name      string
@@ -90,14 +93,14 @@ func TestApiPage(t *testing.T) {
       req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(jsonRequest))  // создаём запрос
       w := httptest.NewRecorder()  // создаём ResponseRecorder (implementation of http.ResponseWriter)
 
-      apiPage(w, req)    // вызываем обработчик
+      app1.apiShorten(w, req)    // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
       defer res.Body.Close()
 
       assert.Equal(t, test.wantCode, res.StatusCode, "Код ответа")  // проверяем код ответа
       assert.Equal(t, "application/json", res.Header.Get("Content-Type"), "Content-Type")  // проверяем Content-Type
 
-      var apiRes apiResponseT  // ответ (из json)
+      var apiRes apiResponse  // ответ (из json)
       err := json.NewDecoder(res.Body).Decode(&apiRes)  // преобразуем json-ответ в объект apiRes
       assert.NoError(t, err, "error decode response json")
 
@@ -111,7 +114,7 @@ func TestApiPage(t *testing.T) {
 } // func
 
 //------------------------------------------------------------------------------
-func TestIdPage(t *testing.T) {
+func TestRedirect(t *testing.T) {
   // проверка полученных коротких ссылок
 
   // добавляем "плохую" короткую ссылку - для проверки BadRequest
@@ -121,11 +124,11 @@ func TestIdPage(t *testing.T) {
     t.Run("get by short-url "+pair.shortURL, func(t *testing.T) {
 
       req := httptest.NewRequest( http.MethodGet, pair.shortURL, nil )  // создаём запрос
-      req.SetPathValue( "id", pair.shortURL[22:] )  // установим параметр id  (делаем работу за ServeMux)  # 22 - длина строки http://localhost:8080/
+      req.SetPathValue( "shortURL", pair.shortURL[22:] )  // установим параметр shortURL  (делаем работу за ServeMux)  # 22 - длина строки http://localhost:8080/
 
       w := httptest.NewRecorder()  // создаём ResponseRecorder (implementation of http.ResponseWriter)
 
-      idPage(w, req)     // вызываем обработчик
+      app1.redirect(w, req)     // вызываем обработчик
       res := w.Result()  // получаем ответ (Response)
       res.Body.Close()   // тело ответа нам не нужно, сразу закроем его
 
